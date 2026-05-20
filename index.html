@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Differential Diagnosis Game</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Differential Diagnosis Game</h1>
+      <p>
+        Test your diagnostic reasoning. Start with a few clues and rank your differential diagnoses.
+        You can also explore differentials by building your own symptom list.
+      </p>
+    </header>
+    <main>
+      <!-- Main menu -->
+      <section id="menu" class="card">
+        <h2>Main Menu</h2>
+        <p>Select a mode to begin.</p>
+        <div class="menu-buttons">
+          <button id="start-game-button">Start Game</button>
+          <button id="custom-mode-button">Custom Symptom Builder</button>
+        </div>
+      </section>
+      <!-- Game mode -->
+      <section id="game-mode" class="card hidden">
+        <h2>Case <span id="case-number">1</span> – Stage <span id="stage-number">1</span></h2>
+        <p id="score-display">Total Score: 0</p>
+        <div id="symptoms-container"></div>
+        <button id="reveal-button">Reveal Extra Clue</button>
+        <form id="ddx-form">
+          <div id="inputs-container"></div>
+        </form>
+        <datalist id="disease-list"></datalist>
+        <button id="submit-button">Submit</button>
+        <div id="result" class="hidden"></div>
+        <div id="stage-summary" class="hidden"></div>
+        <button id="ai-explanation-button" class="hidden">AI Explanation</button>
+        <button id="next-stage-button" class="hidden">Next Stage</button>
+        <button id="next-case-button" class="hidden">New Case</button>
+      </section>
+      <!-- Custom mode -->
+      <section id="custom-mode" class="card hidden">
+        <h2>Custom Symptom DDx Builder</h2>
+        <p>
+          Add symptoms/signs to see the top potential diagnoses. Present findings are marked with a green
+          tick if they match a disease, a red cross if not, and absent expected findings are shown in grey.
+        </p>
+        <div id="custom-input-container">
+          <input id="custom-symptom-input" type="text" list="symptom-list" placeholder="Add symptom/sign…" />
+          <datalist id="symptom-list"></datalist>
+          <button id="add-symptom-button" type="button">Add</button>
+          <button id="clear-symptoms-button" type="button">Clear</button>
+        </div>
+        <div id="selected-symptoms"></div>
+        <div id="custom-results"></div>
+        <button id="custom-ai-explanation-button" class="hidden" type="button">AI Explanation</button>
+        <button id="back-to-menu-button" type="button">Back to Menu</button>
+      </section>
+    </main>
+    <!-- Load dataset definitions before the main script -->
+    <script src="diseases.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,182 @@
+/* Global styles */
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f7f7f7;
+  color: #333;
+}
+
+header {
+  background-color: #2b6cb0;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+main {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* Card container */
+.card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Buttons */
+button {
+  padding: 0.5rem 1rem;
+  margin-top: 0.5rem;
+  background-color: #2b6cb0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:disabled {
+  background-color: #a0aec0;
+  cursor: default;
+}
+
+/* Hide elements by default */
+.hidden {
+  display: none;
+}
+
+/* Menu buttons */
+.menu-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Game mode specific */
+#symptoms-container {
+  margin-bottom: 1rem;
+}
+
+#symptoms-container ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+#score-display {
+  margin: 0.5rem 0;
+  font-weight: bold;
+}
+
+#result {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #ebf8ff;
+  border: 1px solid #bee3f8;
+  border-radius: 4px;
+}
+
+#stage-summary {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+/* Custom mode specific */
+#custom-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#custom-input-container input[type="text"] {
+  flex: 1 1 auto;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+#selected-symptoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.symptom-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background-color: #edf2f7;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.symptom-chip button {
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Differential cards */
+.ddx-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background-color: #fcfcfc;
+}
+
+.ddx-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.ddx-cols {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ddx-present, .ddx-absent {
+  flex: 1 1 45%;
+  min-width: 200px;
+}
+
+.ddx-present ul, .ddx-absent ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ddx-present li, .ddx-absent li {
+  margin-bottom: 0.25rem;
+}
+
+.present-match {
+  color: #2f855a; /* green */
+}
+
+.present-miss {
+  color: #c53030; /* red */
+  text-decoration: line-through;
+}
+
+.absent-feature {
+  color: #718096; /* grey */
+}

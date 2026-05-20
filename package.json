@@ -1,0 +1,10 @@
+{
+  "name": "diagnosisgame",
+  "version": "1.0.0",
+  "description": "Differential diagnosis game with custom symptom builder and AI explanations",
+  "main": "script.js",
+  "dependencies": {
+    "pdf-parse": "^1.1.1",
+    "node-fetch": "^2.6.1"
+  }
+}
