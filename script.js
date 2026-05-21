@@ -379,7 +379,7 @@ async function showAIExplanation(stageGuesses, stageRankings, displayedSymptoms,
     stageSummaryDiv.appendChild(p);
   } catch (err) {
     const p = document.createElement('p');
-    p.textContent = 'AI explanation could not be generated.';
+    p.textContent = `AI explanation could not be generated: ${err.message}`;
     p.style.color = 'red';
     stageSummaryDiv.appendChild(p);
   } finally {
@@ -625,7 +625,7 @@ customAIButton.addEventListener('click', async () => {
     customResultsDiv.appendChild(p);
   } catch (err) {
     const p = document.createElement('p');
-    p.textContent = 'AI explanation could not be generated.';
+    p.textContent = `AI explanation could not be generated: ${err.message}`;
     p.style.color = 'red';
     customResultsDiv.appendChild(p);
   } finally {
@@ -642,7 +642,13 @@ async function getAIExplanation(payload) {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error('AI request failed');
+    
+    let errorMessage = `AI request failed with HTTP ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData && errorData.error) errorMessage += `: ${errorData.error}`;
+    } catch (_) {}
+    throw new Error(errorMessage);
   }
   const data = await response.json();
   return data.explanation || 'No explanation provided.';
