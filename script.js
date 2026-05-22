@@ -20,7 +20,10 @@ let selectedSymptoms = [];
 // the game uses the local dataset for random case generation and scoring. You
 // can toggle this flag once your Netlify site is configured with the ai-case
 // function and environment variables (see README or deployment instructions).
-let AI_CASE_ENABLED = false;
+// Enable AI-driven case generation and scoring. When true, the client
+// requests multi‑round cases from the Netlify backend. Set this to
+// `false` if your deployment does not have the necessary API keys.
+const AI_CASE_ENABLED = true;
 
 // DOM references
 const menuSection = document.getElementById('menu');
@@ -67,6 +70,30 @@ function showSection(section) {
     gameSection.classList.remove('hidden');
   } else if (section === 'custom') {
     customSection.classList.remove('hidden');
+  }
+}
+
+// Simple sound effect helper. Uses Web Audio API to play a short tone.
+// Each type maps to a different frequency. If the browser does not
+// support AudioContext, the function does nothing.
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    // Assign frequencies based on sound type
+    const frequencies = {
+      correct: 700,
+      wrong: 250,
+      stage: 500,
+      finish: 900,
+    };
+    osc.frequency.value = frequencies[type] || 440;
+    osc.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), 200);
+  } catch (e) {
+    // silently ignore if audio cannot play
   }
 }
 
@@ -182,6 +209,8 @@ function renderSymptoms() {
 function setupStageInputs() {
   const stage = currentCase.stage;
   inputsContainer.innerHTML = '';
+  // Determine the number of input fields based on stage. Stage 1 allows
+  // three guesses, stage 2 allows two, stage 3 or higher allows one.
   const numInputs = stage === 1 ? 3 : stage === 2 ? 2 : 1;
   for (let i = 0; i < numInputs; i++) {
     const div = document.createElement('div');
@@ -192,10 +221,15 @@ function setupStageInputs() {
     div.appendChild(input);
     inputsContainer.appendChild(div);
   }
-  // Compute ranking for this stage and store top 10 for summary
-  const ranking = computeRanking(currentCase.displayedSymptoms).slice(0, 10);
-  currentCase.stageRankings[currentCase.stage - 1] = ranking;
-  // Hide results and summary
+  // When AI mode is off, compute the ranking for this stage using the
+  // displayed symptoms. In AI mode the ranking lists are supplied by
+  // currentCase.stageRankings; we still slice to top 10 in case of
+  // longer lists.
+  if (!AI_CASE_ENABLED) {
+    const ranking = computeRanking(currentCase.displayedSymptoms).slice(0, 10);
+    currentCase.stageRankings[currentCase.stage - 1] = ranking;
+  }
+  // Hide results and summary before each new stage
   resultDiv.classList.add('hidden');
   stageSummaryDiv.classList.add('hidden');
 }
@@ -279,22 +313,40 @@ function handleSubmit() {
       const p2 = document.createElement('p');
       p2.textContent = `Your best-ranked differential was number #${bestPosition}`;
       resultDiv.appendChild(p2);
+      // Play a sound to indicate at least one match
+      playSound('correct');
     } else {
       const p2 = document.createElement('p');
       p2.textContent = 'None of your choices matched the top ranking.';
       resultDiv.appendChild(p2);
+      // Play a sound to indicate no match
+      playSound('wrong');
     }
     // disable reveal and submit for this stage
     revealButton.disabled = true;
     submitButton.disabled = true;
     // Decide next step
+    // Determine whether to finish the case or proceed to next stage. In AI
+    // mode we finish when the last round has been reached or the
+    // ranking has narrowed to a single diagnosis. In local mode we use
+    // the original logic: finish when ranking length <= 1, no more
+    // symptoms to reveal or maximum stage reached.
     const rankingSize = ranking.length;
-    const noMoreSymptoms = currentCase.remainingSymptoms.length === 0;
-    const maxStage = currentCase.stage === 3;
-    if (rankingSize <= 1 || noMoreSymptoms || maxStage) {
-      finishCase();
+    if (AI_CASE_ENABLED && currentCase.rounds) {
+      const atLastStage = currentCase.stage >= currentCase.totalStages;
+      if (rankingSize <= 1 || atLastStage) {
+        finishCase();
+      } else {
+        nextStageButton.classList.remove('hidden');
+      }
     } else {
-      nextStageButton.classList.remove('hidden');
+      const noMoreSymptoms = currentCase.remainingSymptoms.length === 0;
+      const maxStage = currentCase.stage === 3;
+      if (rankingSize <= 1 || noMoreSymptoms || maxStage) {
+        finishCase();
+      } else {
+        nextStageButton.classList.remove('hidden');
+      }
     }
   }
   // Execute async processing (sync for local mode). This ensures AI calls
@@ -307,21 +359,39 @@ function handleSubmit() {
 nextStageButton.addEventListener('click', () => {
   currentCase.stage++;
   stageNumberSpan.textContent = currentCase.stage;
-  // reveal two more symptoms if available
-  for (let i = 0; i < 2; i++) {
-    if (currentCase.remainingSymptoms.length > 0) {
-      const sym = currentCase.remainingSymptoms.shift();
-      currentCase.displayedSymptoms.push(sym);
+  // Play a stage transition sound
+  playSound('stage');
+  if (AI_CASE_ENABLED && currentCase.rounds) {
+    // In AI mode, accumulate clues from the next round
+    const nextIndex = currentCase.stage - 1;
+    if (currentCase.rounds[nextIndex] && currentCase.rounds[nextIndex].clues) {
+      currentCase.displayedSymptoms = currentCase.displayedSymptoms.concat(
+        currentCase.rounds[nextIndex].clues
+      );
     }
+    renderSymptoms();
+    // Ranking lists are already provided in currentCase.stageRankings
+    revealButton.disabled = true;
+    submitButton.disabled = false;
+    nextStageButton.classList.add('hidden');
+    setupStageInputs();
+  } else {
+    // Local mode: reveal two more symptoms if available
+    for (let i = 0; i < 2; i++) {
+      if (currentCase.remainingSymptoms.length > 0) {
+        const sym = currentCase.remainingSymptoms.shift();
+        currentCase.displayedSymptoms.push(sym);
+      }
+    }
+    renderSymptoms();
+    // update ranking for new stage
+    currentCase.stageRankings[currentCase.stage - 1] = computeRanking(currentCase.displayedSymptoms).slice(0, 10);
+    // reset UI
+    revealButton.disabled = currentCase.remainingSymptoms.length === 0;
+    submitButton.disabled = false;
+    nextStageButton.classList.add('hidden');
+    setupStageInputs();
   }
-  renderSymptoms();
-  // update ranking for new stage
-  currentCase.stageRankings[currentCase.stage - 1] = computeRanking(currentCase.displayedSymptoms).slice(0, 10);
-  // reset UI
-  revealButton.disabled = currentCase.remainingSymptoms.length === 0;
-  submitButton.disabled = false;
-  nextStageButton.classList.add('hidden');
-  setupStageInputs();
 });
 
 // Start next case
@@ -336,6 +406,8 @@ function finishCase() {
   nextCaseButton.classList.remove('hidden');
   aiExplanationButton.classList.remove('hidden');
   stageSummaryDiv.classList.remove('hidden');
+  // Play a sound to indicate the case is finished
+  playSound('finish');
   stageSummaryDiv.innerHTML = '';
   const heading = document.createElement('p');
   heading.textContent = 'Differential lists for each stage:';
@@ -374,9 +446,14 @@ async function showAIExplanation(stageGuesses, stageRankings, displayedSymptoms,
       correctDiagnosis: correctDisease,
     };
     const explanation = await getAIExplanation(payload);
-    appendAIExplanation(stageSummaryDiv, explanation);
+    const p = document.createElement('p');
+    p.textContent = explanation;
+    stageSummaryDiv.appendChild(p);
   } catch (err) {
-    appendAIError(stageSummaryDiv, err);
+    const p = document.createElement('p');
+    p.textContent = 'AI explanation could not be generated.';
+    p.style.color = 'red';
+    stageSummaryDiv.appendChild(p);
   } finally {
     aiExplanationButton.disabled = false;
     aiExplanationButton.textContent = 'AI Explanation';
@@ -405,24 +482,29 @@ async function startNewCaseAI() {
     const res = await fetch('/.netlify/functions/ai-case', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'generate-case' }),
+      // Request a multi‑round case and pass the PDF file name if present.
+      body: JSON.stringify({ mode: 'generate-case', pdfFileName: 'Symptom to Disease 4e.pdf' }),
     });
     if (!res.ok) throw new Error('AI case generation failed');
     const data = await res.json();
-    const initialSymptoms = data.symptoms || [];
-    const initialRanking = data.ranking || [];
-    // In AI mode there is no fixed correct disease; the differential list
-    // defines which diseases are plausible at stage 1. Store the ranking
-    // and leave `disease` undefined.
+    // The backend returns a `rounds` array where each element has
+    // `clues` and `ddx`. The first element is also flattened as
+    // `symptoms` and `ranking` for backward compatibility.
+    const rounds = data.rounds || [];
+    if (!rounds.length) throw new Error('AI did not return case rounds');
+    // Build the currentCase structure to support multiple rounds. We keep
+    // track of the full clues per stage (as provided) and the ranking list
+    // for each stage. The displayedSymptoms array accumulates clues as
+    // stages progress.
     currentCase = {
       disease: null,
-      allSymptoms: [],
-      displayedSymptoms: initialSymptoms.slice(),
-      remainingSymptoms: [],
+      rounds: rounds.map((r) => ({ clues: r.clues.slice(), ddx: r.ddx.slice() })),
+      displayedSymptoms: rounds[0].clues.slice(),
       stage: 1,
       stageGuesses: [],
       stageScores: [],
-      stageRankings: [initialRanking.slice()],
+      stageRankings: rounds.map((r) => r.ddx.slice()),
+      totalStages: rounds.length,
     };
     caseNumberSpan.textContent = caseCounter;
     stageNumberSpan.textContent = currentCase.stage;
@@ -455,7 +537,12 @@ async function evaluateGuessesAI(guesses) {
     const res = await fetch('/.netlify/functions/ai-case', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'evaluate-case', symptoms: currentCase.displayedSymptoms, userGuesses: guesses }),
+      body: JSON.stringify({
+        mode: 'evaluate-case',
+        symptoms: currentCase.displayedSymptoms,
+        userGuesses: guesses,
+        ranking: currentCase.stageRankings[currentCase.stage - 1] || [],
+      }),
     });
     if (!res.ok) throw new Error('AI evaluation failed');
     const data = await res.json();
@@ -615,9 +702,14 @@ customAIButton.addEventListener('click', async () => {
       topDifferentials: computeRanking(selectedSymptoms).slice(0, 5),
     };
     const explanation = await getAIExplanation(payload);
-    appendAIExplanation(customResultsDiv, explanation);
+    const p = document.createElement('p');
+    p.textContent = explanation;
+    customResultsDiv.appendChild(p);
   } catch (err) {
-    appendAIError(customResultsDiv, err);
+    const p = document.createElement('p');
+    p.textContent = 'AI explanation could not be generated.';
+    p.style.color = 'red';
+    customResultsDiv.appendChild(p);
   } finally {
     customAIButton.disabled = false;
     customAIButton.textContent = 'AI Explanation';
@@ -631,62 +723,11 @@ async function getAIExplanation(payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
   if (!response.ok) {
-    let errorText = '';
-    try {
-      errorText = await response.text();
-    } catch (err) {
-      errorText = '';
-    }
-    throw new Error(`AI request failed with HTTP ${response.status}${errorText ? `: ${errorText}` : ''}`);
+    throw new Error('AI request failed');
   }
-
   const data = await response.json();
   return data.explanation || 'No explanation provided.';
-}
-
-function appendAIExplanation(container, markdownText) {
-  const existing = container.querySelector('.ai-explanation-box');
-  if (existing) existing.remove();
-
-  const box = document.createElement('div');
-  box.className = 'ai-explanation-box';
-  box.innerHTML = markdownToHTML(markdownText);
-  container.appendChild(box);
-}
-
-function appendAIError(container, err) {
-  const box = document.createElement('div');
-  box.className = 'ai-explanation-error';
-  box.textContent = `AI explanation could not be generated${err && err.message ? `: ${err.message}` : '.'}`;
-  container.appendChild(box);
-}
-
-function markdownToHTML(markdown) {
-  if (!markdown) return '';
-
-  // Escape HTML first so model output cannot inject scripts, then convert a small
-  // safe Markdown subset used by Gemini: headings, bold, bullets and line breaks.
-  let html = String(markdown)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  html = html
-    .replace(/^#### (.*)$/gim, '<h4>$1</h4>')
-    .replace(/^### (.*)$/gim, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gim, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gim, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-    .replace(/^\s*[-*] (.*)$/gim, '<li>$1</li>');
-
-  // Group adjacent list items into <ul> blocks.
-  html = html.replace(/(?:<li>.*?<\/li>\n?)+/gims, (match) => `<ul>${match}</ul>`);
-
-  return html
-    .replace(/\n{2,}/g, '<br><br>')
-    .replace(/\n/g, '<br>');
 }
 
 // Event handlers for menu buttons
