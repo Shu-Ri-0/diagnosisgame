@@ -20,7 +20,7 @@ let selectedSymptoms = [];
 // the game uses the local dataset for random case generation and scoring. You
 // can toggle this flag once your Netlify site is configured with the ai-case
 // function and environment variables (see README or deployment instructions).
-const AI_CASE_ENABLED = false;
+let AI_CASE_ENABLED = false;
 
 // DOM references
 const menuSection = document.getElementById('menu');
@@ -374,14 +374,9 @@ async function showAIExplanation(stageGuesses, stageRankings, displayedSymptoms,
       correctDiagnosis: correctDisease,
     };
     const explanation = await getAIExplanation(payload);
-    const p = document.createElement('p');
-    p.textContent = explanation;
-    stageSummaryDiv.appendChild(p);
+    appendAIExplanation(stageSummaryDiv, explanation);
   } catch (err) {
-    const p = document.createElement('p');
-    p.textContent = `AI explanation could not be generated: ${err.message}`;
-    p.style.color = 'red';
-    stageSummaryDiv.appendChild(p);
+    appendAIError(stageSummaryDiv, err);
   } finally {
     aiExplanationButton.disabled = false;
     aiExplanationButton.textContent = 'AI Explanation';
@@ -620,14 +615,9 @@ customAIButton.addEventListener('click', async () => {
       topDifferentials: computeRanking(selectedSymptoms).slice(0, 5),
     };
     const explanation = await getAIExplanation(payload);
-    const p = document.createElement('p');
-    p.textContent = explanation;
-    customResultsDiv.appendChild(p);
+    appendAIExplanation(customResultsDiv, explanation);
   } catch (err) {
-    const p = document.createElement('p');
-    p.textContent = `AI explanation could not be generated: ${err.message}`;
-    p.style.color = 'red';
-    customResultsDiv.appendChild(p);
+    appendAIError(customResultsDiv, err);
   } finally {
     customAIButton.disabled = false;
     customAIButton.textContent = 'AI Explanation';
@@ -641,17 +631,62 @@ async function getAIExplanation(payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+
   if (!response.ok) {
-    
-    let errorMessage = `AI request failed with HTTP ${response.status}`;
+    let errorText = '';
     try {
-      const errorData = await response.json();
-      if (errorData && errorData.error) errorMessage += `: ${errorData.error}`;
-    } catch (_) {}
-    throw new Error(errorMessage);
+      errorText = await response.text();
+    } catch (err) {
+      errorText = '';
+    }
+    throw new Error(`AI request failed with HTTP ${response.status}${errorText ? `: ${errorText}` : ''}`);
   }
+
   const data = await response.json();
   return data.explanation || 'No explanation provided.';
+}
+
+function appendAIExplanation(container, markdownText) {
+  const existing = container.querySelector('.ai-explanation-box');
+  if (existing) existing.remove();
+
+  const box = document.createElement('div');
+  box.className = 'ai-explanation-box';
+  box.innerHTML = markdownToHTML(markdownText);
+  container.appendChild(box);
+}
+
+function appendAIError(container, err) {
+  const box = document.createElement('div');
+  box.className = 'ai-explanation-error';
+  box.textContent = `AI explanation could not be generated${err && err.message ? `: ${err.message}` : '.'}`;
+  container.appendChild(box);
+}
+
+function markdownToHTML(markdown) {
+  if (!markdown) return '';
+
+  // Escape HTML first so model output cannot inject scripts, then convert a small
+  // safe Markdown subset used by Gemini: headings, bold, bullets and line breaks.
+  let html = String(markdown)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  html = html
+    .replace(/^#### (.*)$/gim, '<h4>$1</h4>')
+    .replace(/^### (.*)$/gim, '<h3>$1</h3>')
+    .replace(/^## (.*)$/gim, '<h2>$1</h2>')
+    .replace(/^# (.*)$/gim, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    .replace(/^\s*[-*] (.*)$/gim, '<li>$1</li>');
+
+  // Group adjacent list items into <ul> blocks.
+  html = html.replace(/(?:<li>.*?<\/li>\n?)+/gims, (match) => `<ul>${match}</ul>`);
+
+  return html
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>');
 }
 
 // Event handlers for menu buttons

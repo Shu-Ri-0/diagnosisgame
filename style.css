@@ -180,3 +180,51 @@ button:disabled {
 .absent-feature {
   color: #718096; /* grey */
 }
+/* AI explanation output */
+.ai-explanation-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  line-height: 1.65;
+  white-space: normal;
+  color: #1f2937;
+}
+
+.ai-explanation-box h1,
+.ai-explanation-box h2,
+.ai-explanation-box h3,
+.ai-explanation-box h4 {
+  margin: 1rem 0 0.5rem;
+  color: #1e3a8a;
+}
+
+.ai-explanation-box h1 { font-size: 1.4rem; }
+.ai-explanation-box h2 { font-size: 1.25rem; }
+.ai-explanation-box h3 { font-size: 1.1rem; }
+.ai-explanation-box h4 { font-size: 1rem; }
+
+.ai-explanation-box strong {
+  color: #111827;
+}
+
+.ai-explanation-box ul {
+  margin: 0.5rem 0 0.8rem 1.25rem;
+  padding-left: 1rem;
+}
+
+.ai-explanation-box li {
+  margin-bottom: 0.4rem;
+}
+
+.ai-explanation-error {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 8px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
